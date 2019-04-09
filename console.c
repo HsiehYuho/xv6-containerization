@@ -14,10 +14,12 @@
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
+#include "container.h"
 
 static void consputc(int);
 
 static int panicked = 0;
+static int activevc = 1;
 
 static struct {
   struct spinlock lock;
@@ -188,10 +190,22 @@ struct {
 
 #define C(x)  ((x)-'@')  // Control-x
 
+/// switch container 
+void switchcontainer(void){
+  // activevc will only be within [1,2,3]
+  activevc = (activevc % MAX_VCS) + 1;
+  if(activevc == 1){
+    cprintf("Change to root %d \n", activevc);
+  }
+  else{
+    cprintf("Change to container %d \n", activevc);
+  }
+}
+
 void
 consoleintr(int (*getc)(void))
 {
-  int c, doprocdump = 0;
+  int c, doprocdump = 0, docontainerswitch = 0;
 
   acquire(&cons.lock);
   while((c = getc()) >= 0){
@@ -200,6 +214,11 @@ consoleintr(int (*getc)(void))
       // procdump() locks cons.lock indirectly; invoke later
       doprocdump = 1;
       break;
+
+    case C('T'):  // Change activate console to different container
+      docontainerswitch = 1;
+      break;
+
     case C('U'):  // Kill line.
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
@@ -230,6 +249,9 @@ consoleintr(int (*getc)(void))
   if(doprocdump) {
     procdump();  // now call procdump() wo. cons.lock held
   }
+  if(docontainerswitch){
+    switchcontainer();
+  }
 }
 
 int
@@ -242,7 +264,9 @@ consoleread(struct inode *ip, char *dst, int n)
   target = n;
   acquire(&cons.lock);
   while(n > 0){
-    while(input.r == input.w){
+    // there are a feww processes sleep and only the active container one will keep process
+    // we use the ip->minor to distinguish different containers @ref init.c
+    while(input.r == input.w || (activevc != ip->minor)){
       if(myproc()->killed){
         release(&cons.lock);
         ilock(ip);
@@ -277,8 +301,10 @@ consolewrite(struct inode *ip, char *buf, int n)
 
   iunlock(ip);
   acquire(&cons.lock);
-  for(i = 0; i < n; i++)
-    consputc(buf[i] & 0xff);
+  if(activevc == ip->minor){
+    for(i = 0; i < n; i++)
+      consputc(buf[i] & 0xff);
+  }
   release(&cons.lock);
   ilock(ip);
 
