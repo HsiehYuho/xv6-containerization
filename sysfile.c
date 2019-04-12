@@ -443,3 +443,46 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+// Set current process runs on one container on certain inode
+// at the same time, change the process dir, the inode must be a dir
+// @param run on certain file
+// example (run_vc("./test"))
+// return 0 if run success, else -1 if error happens
+int 
+sys_runvc(void)
+{
+  char *path;
+  struct inode *ip;
+  struct proc *curproc = myproc();
+  
+  // Ref chdir
+  begin_op();
+  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0){
+    end_op();
+    return -1;
+  }
+  ilock(ip);
+  if(ip->type != T_DIR){
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+  iunlock(ip);
+  iput(curproc->cwd);
+  end_op();
+
+  // change the working directory
+  curproc->cwd = ip;
+
+  // Mount the process on a the container root node
+  if( setcont(ip)!= 0 ){
+    return -1;
+  }
+
+  // Run sh
+
+  return 0; 
+
+
+}

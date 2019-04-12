@@ -24,9 +24,15 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 
+// Run the current process on a container, mount it on a certain file node
+// @param char* path: the directory that this process wants to run in
+// must be created beforehand
+int runvc(char*);
+
 // ulib.c
 int stat(char*, struct stat*);
 char* strcpy(char*, char*);
+char* strcat(char*, const char*);
 void *memmove(void*, void*, int);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);

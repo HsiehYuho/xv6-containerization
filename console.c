@@ -192,13 +192,15 @@ struct {
 
 /// switch container 
 void switchcontainer(void){
-  // activevc will only be within [1,2,3]
-  activevc = (activevc % MAX_VCS) + 1;
+  // activevc will only be within [2,3,4], 1 is the original root console
+  // So we have MAX_VCS + 1 console device
+  // but the console device names are ["CONSOLE", "vc0", "vc1", "vc2"]
+  activevc = (activevc % (MAX_VCS + 1)) + 1;
   if(activevc == 1){
-    cprintf("Change to root %d \n", activevc);
+    cprintf("Change to root \n", activevc);
   }
   else{
-    cprintf("Change to container %d \n", activevc);
+    cprintf("Change to container %d \n", activevc - 1);
   }
 }
 

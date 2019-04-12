@@ -20,6 +20,7 @@
 #include "fs.h"
 #include "buf.h"
 #include "file.h"
+#include "container.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
@@ -626,12 +627,25 @@ static struct inode*
 namex(char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
+  struct inode *controot = 0;
 
-  if(*path == '/')
-    ip = iget(ROOTDEV, ROOTINO);
-  else
-    ip = idup(myproc()->cwd);
+  struct proc *curproc = myproc();
+  if(curproc && curproc->cont){
+    controot = curproc->cont->root;
+  }
 
+  if(*path == '/'){
+    if(!controot){
+      ip = iget(ROOTDEV, ROOTINO);
+    }
+    else{
+      ip = controot; // if process in container, the root should be where container mounts on
+    }
+  }
+  else{      
+    ip = idup(myproc()->cwd); // We assume the process is in valid level
+  }
+    
   while((path = skipelem(path, name)) != 0){
     ilock(ip);
     if(ip->type != T_DIR){
@@ -647,6 +661,20 @@ namex(char *path, int nameiparent, char *name)
       iunlockput(ip);
       return 0;
     }
+
+    // if ip is on the container root now, and would like to move outside allowed place
+    // then we should always return container root node
+    // ex:  if controot is a/b/c, process currently is at a/b/c/d
+    //      it wants to move to a/b/c/d/e through "./../../c/d/e", 
+    //      it should make the process go back to a/b/c
+    // we have make sure controot is T_DIR, ref to container.c setcont function
+    if(controot){
+      if(ip->inum == controot->inum && namecmp(name, "..") == 0){
+        iunlock(ip);
+        return ip;
+      }
+    }
+    
     iunlockput(ip);
     ip = next;
   }
