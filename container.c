@@ -51,7 +51,7 @@ setcont(struct inode *root){
   }
 
   acquire(&conttable.lock);
-  c->state = PAUSE;
+  c->state = RUN;
   c->root = root; 
   release(&conttable.lock);
 
@@ -59,5 +59,44 @@ setcont(struct inode *root){
   struct proc *proc = myproc();
 
   proc->cont = c;
+  return 0;
+}
+
+// Pause the current container
+// @param int: the id of container
+// only root proc can be the caller
+// return 0 if success, else -1
+int       
+vcpause(int id){
+  struct container *c;
+  if(id < 0){
+    return -1;
+  }
+
+  c = &conttable.containers[id];  
+  if(!c){
+    return -1;
+  }
+  acquire(&conttable.lock);
+  c->state = HALT;
+  release(&conttable.lock);
+  return 0;
+}
+
+// Resume the specified container
+// @param int: the id of container, must be greater than 0, the caller must be root proc
+// return 0 if success, else -1
+int vcresume(int id){
+  struct container *c;
+  if(id < 0){
+    return -1;
+  }
+  c = &conttable.containers[id];
+  if(!c){
+    return -1;
+  }
+  acquire(&conttable.lock);
+  c->state = RUN;
+  release(&conttable.lock);
   return 0;
 }

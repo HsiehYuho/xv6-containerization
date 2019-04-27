@@ -89,3 +89,31 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// pause the container 
+int
+sys_vcpause(void){
+  int id;
+  if(argint(0, &id) < 0)
+    return -1;
+  
+  if(vcpause(id) < 0){
+    return -1;
+  }
+  procpause();
+  return 0;
+}
+
+// resume the container 
+int
+sys_vcresume(void){
+  int id;
+  if(argint(0, &id) < 0)
+    return -1;
+
+  if(vcresume(id) < 0){
+    return -1;
+  }
+  procresume();
+  return 0;
+}

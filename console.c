@@ -200,7 +200,7 @@ void switchcontainer(void){
     cprintf("Change to root \n", activevc);
   }
   else{
-    cprintf("Change to container %d \n", activevc - 1);
+    cprintf("Change to container %d \n", activevc - 2);
   }
 }
 

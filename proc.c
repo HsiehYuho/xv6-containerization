@@ -6,6 +6,11 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "container.h"
+
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 struct {
   struct spinlock lock;
@@ -213,6 +218,7 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
+  np->cont = curproc->cont;
 
   acquire(&ptable.lock);
 
@@ -534,4 +540,32 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+// Access the container field in the process, to make the process PAUSE if the container is halt
+void      
+procpause(void){
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->cont && p->cont->state == HALT){
+      p->state = PAUSE;
+    }
+  }
+  release(&ptable.lock);
+}
+
+// Access the container field in the process, to make process SLEEPING if the container is run
+void      
+procresume(void){
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if((p->cont && p->cont->state == RUN) || p->state == PAUSE){
+      p->state = RUNNABLE;
+    }
+  }
+  release(&ptable.lock);
 }

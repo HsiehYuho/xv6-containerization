@@ -21,3 +21,5 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_runvc  22
+#define SYS_vcpause 23
+#define SYS_vcresume 24

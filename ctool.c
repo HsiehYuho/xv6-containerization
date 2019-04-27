@@ -59,7 +59,7 @@ int copyfiles(char* srcf, char* destdir){
 	return 0;
 }
 
-void attachvc(){
+void attachvc(char* env){
 	int fd, id;
 	if(vcidx >= MAX_VCS){
 		printf(1, "Run out of containers \n");
@@ -71,8 +71,8 @@ void attachvc(){
 	// Copy the necessary cmds to destination
 	for(int i = 0; i < CPY_CMDS_NUM; i++){
 		char* cmd = cpycmds[i];
-		if(copyfiles(cmd, "./testdir") < 0){
-			printf(1, "Fail to copy cmds to vc.");
+		if(copyfiles(cmd, env) < 0){
+			printf(1, "Fail to copy cmds to vc. \n");
 			exit();
 		}
 	}
@@ -87,27 +87,76 @@ void attachvc(){
 		dup(fd);
 		dup(fd);
 		dup(fd);
-		if(runvc("./testdir") < 0){
-			printf(1, "Fail to run vc. Did you mkdir ? \n");
+		if(runvc(env) < 0){
+			printf(1, "Fail to run vc. Did you mkdir %s ? \n", env);
 			exit();
 		}
 		exec("/sh",shargv);
 		exit();
 	}
-
+	else {
+		printf(1, "Start to run container ... \n");
+	}
 }
 
 // run current processor
-void start(char *s_args[]){
-	attachvc();
-
+void run(char *s_args[]){
+	char* env = s_args[0];
+	if(!env){
+		printf(1, "run [ctool runvc PATH/TO/ENV ] \n");
+		exit();
+	}
+	attachvc(env);
 	exit();
 }
 
+// pause the current processor or the specified container process
+void pause(char *s_args[]){
+	int id;
+	id = s_args[0] == 0 ? -1 : atoi(s_args[0]);
+	if(vcpause(id) < 0){
+		printf(1, "pause container %d failed \n", id);
+		exit();
+	}
+	printf(1, "pause container %d successful \n", id);
+	exit();
+}
+
+// resume the specified container process
+void resume(char *s_args[]){
+	int id;
+	id = s_args[0] == 0 ? -1 : atoi(s_args[0]);
+
+	if(id < 0 || vcresume(id) < 0){
+		printf(1, "resume container %d failed \n", id);
+		exit();
+	}
+	printf(1, "resume container %d successful \n", id);
+	exit();
+}
 
 int
 main(int argc, char *argv[]){
-	if(strcmp(argv[1], "start") == 0){
-		start(&argv[2]);
+	// support cmds
+	// - 'ctool run env'
+	//
+	// - 'ctool pause (id)':
+	//		can call inside root process, 
+	// 	  	can call inside the container process. 
+	// 		If call inside root process, must specify the desired pause container id [0,1,2]
+	// 
+	// - 'ctool resume id':
+	// 		can only call from the root process
+
+	if(strcmp(argv[1], "run") == 0){
+		run(&argv[2]);
 	}
+
+	if(strcmp(argv[1], "pause") == 0){
+		pause(&argv[2]);
+	}
+
+	if(strcmp(argv[1], "resume") == 0){
+		resume(&argv[2]);
+	}	
 }

@@ -29,6 +29,18 @@ int uptime(void);
 // must be created beforehand
 int runvc(char*);
 
+// Pause the current container
+// @param int: the id of container
+// if id = -1, means the command the caller from container itself, pause the cur proc
+// else the caller is root proc
+// return 0 if success, else -1
+int vcpause(int);
+
+// Resume the specified container
+// @param int: the id of container, must be greater than 0, the caller must be root proc
+// return 0 if success, else -1
+int vcresume(int);
+
 // ulib.c
 int stat(char*, struct stat*);
 char* strcpy(char*, char*);
